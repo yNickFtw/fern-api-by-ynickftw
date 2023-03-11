@@ -6,6 +6,7 @@ const postSchema = new Schema(
     image: String,
     title: String,
     likes: Array,
+    saves: Array,
     comments: Array,
     userId: mongoose.ObjectId,
     userName: String,

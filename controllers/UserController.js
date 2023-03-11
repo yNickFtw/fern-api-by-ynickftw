@@ -55,13 +55,13 @@ const login = async (req, res) => {
 
   // check if user exists
   if (!user) {
-    res.status(404).json({ erros: ["Usuário não encontrado."] });
+    res.status(404).json({ errors: ["Usuário não encontrado."] });
     return;
   }
 
   // check if password matches
   if (!(await bcrypt.compare(password, user.password))) {
-    res.status(422).json({ erros: ["Senha inválida"] });
+    res.status(422).json({ errors: ["Senha inválida"] });
     return;
   }
 
@@ -78,6 +78,15 @@ const getCurrentUser = async (req, res) => {
   const user = req.user;
 
   res.status(200).json(user);
+};
+
+const getAllUsers = async (req, res) => {
+  const users = await User.find();
+
+  if (!users)
+    return res.status(404).json({ errors: ["Não há usuários cadastrados"] });
+
+  return res.status(200).json(users);
 };
 
 // update an user
@@ -131,7 +140,7 @@ const getUserById = async (req, res) => {
 
     // check if user exists
     if (!user) {
-      res.status(404).json({ errors: ["Usuário não encontado"] });
+      res.status(404).json({ errors: ["Usuário não encontrado"] });
 
       return;
     }
@@ -142,10 +151,80 @@ const getUserById = async (req, res) => {
   }
 };
 
+// Follow user functionality
+const followUser = async (req, res) => {
+  const { userIdToFollow } = req.params;
+  const reqUser = req.user;
+
+  try {
+    const userToFollow = await User.findById(userIdToFollow);
+    const user = await User.findById(reqUser);
+
+    if (!userToFollow || !user) {
+      return res.status(404).json({ message: "Usuário não encontrado" });
+    }
+
+    // verify if user follow
+    const isFollowing = user.following.includes(userIdToFollow);
+
+    if (isFollowing) {
+      return res.status(400).json({ message: "Usuário já está sendo seguido" });
+    }
+
+    // add to list of following
+    user.following.push(userIdToFollow);
+    await user.save();
+
+    // add to list of followers
+    userToFollow.followers.push(reqUser._id);
+    await userToFollow.save();
+
+    res.status(200).json({ message: "Usuário seguido com sucesso" });
+  } catch (error) {
+    res.status(500).json({ message: "Erro ao seguir o usuário", error });
+  }
+};
+
+const unfollowUser = async (req, res) => {
+  const { userIdToUnfollow } = req.params;
+  const reqUser = req.user._id
+
+  try {
+    const userToUnfollow = await User.findById(userIdToUnfollow);
+    const user = await User.findById(reqUser);
+
+    if (!userToUnfollow || !user) {
+      return res.status(404).json({ message: "Usuário não encontrado" });
+    }
+
+    // verify if user already unfollowed
+    const isFollowing = user.following.includes(userIdToUnfollow);
+
+    if (!isFollowing) {
+      return res.status(400).json({ message: "Usuário já foi deixado de seguir" });
+    }
+
+    // remove from list of following
+    user.following.pull(userIdToUnfollow);
+    await user.save();
+
+    // remove from list of followers
+    userToUnfollow.followers.pull(reqUser)
+    await userToUnfollow.save();
+
+    res.status(200).json({ message: "Usuário deixado de seguir com sucesso" });
+  } catch (error) {
+    res.status(500).json({ message: "Erro ao deixar de seguir o usuário", error });
+  }
+};
+
 module.exports = {
   register,
   login,
   getCurrentUser,
+  getAllUsers,
   update,
   getUserById,
+  followUser,
+  unfollowUser,
 };

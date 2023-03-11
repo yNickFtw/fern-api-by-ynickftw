@@ -21,137 +21,259 @@ const insertPost = async (req, res) => {
 
   // if post was created successfully, return data
   if (!newPost) {
-    res
-      .status(422)
-      .json({
-        errors: ["Houve um problema, por favor, tente novamente mais tarde."],
-      });
-      return
+    res.status(422).json({
+      errors: ["Houve um problema, por favor, tente novamente mais tarde."],
+    });
+    return;
   }
 
   res.status(201).json(newPost);
 };
 
 // Remove a post from DB
-const deletePost = async(req, res) => {
-  const {id} = req.params
-  const reqUser = req.user
-  const post = await Post.findById(mongoose.Types.ObjectId(id))
+const deletePost = async (req, res) => {
+  const { id } = req.params;
+  const reqUser = req.user;
+  const post = await Post.findById(mongoose.Types.ObjectId(id));
 
   // Check if post exists
-  if(!post) {
-    res.status(404).json({errors: ["Foto não encontrada"]})
-    return
+  if (!post) {
+    res.status(404).json({ errors: ["Foto não encontrada"] });
+    return;
   }
 
   // Check if post belongs to user
-  if(post.userId.toString() !== reqUser._id.toString()) {
-    res.status(422).json({errors: ["Ocorreu um erro, por favor tente novamente mais tarde."]})
+  if (post.userId.toString() !== reqUser._id.toString()) {
+    res.status(422).json({
+      errors: ["Ocorreu um erro, por favor tente novamente mais tarde."],
+    });
   }
 
-  await Post.findByIdAndDelete(post._id)
+  await Post.findByIdAndDelete(post._id);
 
-  res.status(200).json({id: post._id, message: "Postagem deletada com sucesso."})
-}
+  res
+    .status(200)
+    .json({ id: post._id, message: "Postagem deletada com sucesso." });
+};
 
-const getAllPost = async(req, res) => {
-  const posts = await Post.find({}).sort([["createdAt", -1]]).exec()
+const getAllPost = async (req, res) => {
+  const posts = await Post.find({})
+    .sort([["createdAt", -1]])
+    .exec();
 
-  return res.status(200).json(posts)
-}
+  return res.status(200).json(posts);
+};
 
-const getUserPosts = async(req, res) => {
-  const {id} = req.params
+const getUserPosts = async (req, res) => {
+  const { id } = req.params;
 
-  const posts = await Post.find({userId: id}).sort([['createdAt', -1]]).exec()
+  const posts = await Post.find({ userId: id })
+    .sort([["createdAt", -1]])
+    .exec();
 
-  return res.status(200).json(posts)
-}
+  return res.status(200).json(posts);
+};
 
 // Get post by id
-const getPostById = async(req, res) => {
-  const {id} = req.params
+const getPostById = async (req, res) => {
+  const { id } = req.params;
 
-  const post = await Post.findById(mongoose.Types.ObjectId(id))
+  const post = await Post.findById(mongoose.Types.ObjectId(id));
 
-  if(!post) {
-    return res.status(404).json({errors: ["Post não encontrado."]})
+  if (!post) {
+    return res.status(404).json({ errors: ["Post não encontrado."] });
   }
 
-  return res.status(200).json(post)
-}
+  return res.status(200).json(post);
+};
 
 // update a post
-const updatePost = async(req, res) => {
-  const {id} = req.params
-  const {title} = req.body
+const updatePost = async (req, res) => {
+  const { id } = req.params;
+  const { title } = req.body;
 
-  const reqUser = req.user
+  const reqUser = req.user;
 
-  const post = await Post.findById(id)
+  const post = await Post.findById(id);
 
   // check if post exists
-  if(!post) {
-    return res.status(404).json({errors: ["Post não encontrado"]})
+  if (!post) {
+    return res.status(404).json({ errors: ["Post não encontrado"] });
   }
 
   // check if post belongs to user
-  if(post.userId.toString() !== reqUser._id.toString()) {
-    return res.status(422).json({errors: ["Ocorreu um erro, por favor tente novamente mais tarde."]})
+  if (post.userId.toString() !== reqUser._id.toString()) {
+    return res.status(422).json({
+      errors: ["Ocorreu um erro, por favor tente novamente mais tarde."],
+    });
   }
 
-  if(!title) {
-    return res.status(422).json({errors: ["A descrição é obrigatória"]})
+  if (!title) {
+    return res.status(422).json({ errors: ["A descrição é obrigatória"] });
   }
 
-  if(title) {
-    post.title = title
+  if (title) {
+    post.title = title;
   }
 
-  await post.save()
+  await post.save();
 
-  return res.status(200).json({post, message: "Post editado com sucesso."})
-}
+  return res.status(200).json({ post, message: "Post editado com sucesso." });
+};
 
 // Like functionality
-const likePost = async(req, res) => {
-  const {id} = req.params
+const likePost = async (req, res) => {
+  const { id } = req.params;
 
-  const reqUser = req.user
+  const reqUser = req.user;
 
-  const post = await Post.findById(id)
+  const post = await Post.findById(id);
 
-  if(!post) {
-    return res.status(404).json({errors: ["Post não encontrado"]})
+  if (!post) {
+    return res.status(404).json({ errors: ["Post não encontrado"] });
   }
 
   // check if user already liked the photo
-  if(post.likes.includes(reqUser._id)) {
-    return res.status(422).json({errors: ["Você já curtiu a foto."]})
+  if (post.likes.includes(reqUser._id)) {
+    return res.status(422).json({ errors: ["Você já curtiu a foto."] });
   }
 
   // put user id in likes array
-  post.likes.push(reqUser._id)
+  post.likes.push(reqUser._id);
 
-  await post.save()
+  if (reqUser.likesUser.includes(reqUser._id)) {
+    return res
+      .status(422)
+      .json({ errors: ["Ocorreu um erro, tente novamente mais tarde"] });
+  }
+  reqUser.likesUser.push({ postId: post._id });
 
-  res.status(200).json({postId: id, userId: reqUser._id, message: "Você curtiu o post!"})
-}
+  await post.save();
+  await reqUser.save();
 
-// Comment functionality
-const commentPost = async(req, res) => {
+  res
+    .status(200)
+    .json({ postId: id, userId: reqUser._id, message: "Você curtiu o post!" });
+};
+
+const unlikePost = async (req, res) => {
+  const { id } = req.params;
+
+  const reqUser = req.user;
+
+  const post = await Post.findById(id);
+
+  if (!post) {
+    return res.status(404).json({ errors: ["Post não encontrado"] });
+  }
+
+  // check if user already liked the photo
+  if (!post.likes.includes(mongoose.Types.ObjectId(reqUser._id))) {
+    return res
+      .status(422)
+      .json({ errors: ["Você ainda não curtiu esta foto."] });
+  }
+
+  // remove user id from likes array
+  post.likes = post.likes.filter(
+    (like) =>
+      like.toString() !== mongoose.Types.ObjectId(reqUser._id).toString()
+  );
+
+  if (
+    !reqUser.likesUser.some(
+      (like) => like.postId.toString() === post._id.toString()
+    )
+  ) {
+    return res
+      .status(422)
+      .json({ errors: ["Ocorreu um erro, tente novamente mais tarde"] });
+  }
+  reqUser.likesUser = reqUser.likesUser.filter(
+    (like) => like.postId.toString() !== post._id.toString()
+  );
+
+  await post.save();
+  await reqUser.save();
+
+  res
+    .status(200)
+    .json({
+      postId: id,
+      userId: reqUser._id,
+      message: "Você descurtiu o post!",
+    });
+};
+
+// Save post
+const savePost = async (req, res) => {
+  const { id } = req.params;
+
+  const reqUser = req.user;
+
+  const post = await Post.findById(id);
+
+  // check if post exists
+  if (!post) return res.status(404).json({ errors: ["Post não encontrado"] });
+
+  // check if post saves includes userId
+  if (post.saves.includes(mongoose.Types.ObjectId(reqUser._id))) {
+    return res.status(422).json({ errors: ["Você já salvou este post!"] });
+  }
+
+  post.saves.push(reqUser._id);
+
+  if (reqUser.savesUser.includes(reqUser._id)) {
+    return res
+      .status(422)
+      .json({ errors: ["Ocorreu um erro, tente novamente mais tarde"] });
+  }
+
+  reqUser.savesUser.push({ postId: post._id });
+
+  await post.save();
+  await reqUser.save();
+
+  res
+    .status(200)
+    .json({ postId: id, userId: reqUser._id, message: "Você salvou o post!" });
+};
+
+const unsavePost = async(req, res) => {
   const {id} = req.params
-  const {comment} = req.body
 
-  const reqUser = req.user
-
-  const user = await User.findById(reqUser._id)
+  const reqUser = req.params
 
   const post = await Post.findById(id)
 
   // check if post exists
   if(!post) {
-    return res.status(404).json({errors: ["Post não encontrado"]})
+    return res.status(404).json({errors: ["Post não encontrado!"]})
+  }
+
+  if(!post.saves.includes(mongoose.Types.ObjectId(reqUser._id))) {
+    return res.status(422).json({errors: ["Você ainda não salvou"]})
+  }
+
+  post.saves.filter((save) => {
+    save.toString() !== mongoose.Types.ObjectId(reqUser._id).toString()
+  })
+}
+
+// Comment functionality
+const commentPost = async (req, res) => {
+  const { id } = req.params;
+  const { comment } = req.body;
+
+  const reqUser = req.user;
+
+  const user = await User.findById(reqUser._id);
+
+  const post = await Post.findById(id);
+
+  // check if post exists
+  if (!post) {
+    return res.status(404).json({ errors: ["Post não encontrado"] });
   }
 
   // put comment in the array of comments
@@ -159,28 +281,30 @@ const commentPost = async(req, res) => {
     comment,
     userName: user.name,
     userImage: user.profileImage,
-    userId: user._id
+    userId: user._id,
+  };
+
+  if (!comment) {
+    return res.status(422).json({ erros: ["O comentário é obrigatório"] });
   }
 
-  if(!comment) {
-    return res.status(422).json({erros: ["O comentário é obrigatório"]})
-  }
+  post.comments.push(userComment);
 
-  post.comments.push(userComment)
+  await post.save();
 
-  await post.save()
-
-  res.status(200).json({comment: userComment, message: "Comentário adicionado!"})
-}
+  res
+    .status(200)
+    .json({ comment: userComment, message: "Comentário adicionado!" });
+};
 
 // Search posts by title
-const searchPost = async(req, res) => {
-  const {q} = req.query
+const searchPost = async (req, res) => {
+  const { q } = req.query;
 
-  const posts = await Post.find({title: new RegExp(q, "i")}).exec()
+  const posts = await Post.find({ title: new RegExp(q, "i") }).exec();
 
-  res.status(200).json(posts)
-}
+  res.status(200).json(posts);
+};
 
 module.exports = {
   insertPost,
@@ -190,6 +314,8 @@ module.exports = {
   getPostById,
   updatePost,
   likePost,
+  unlikePost,
+  savePost,
   commentPost,
-  searchPost
+  searchPost,
 };

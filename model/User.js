@@ -8,6 +8,10 @@ const userSchema = new Schema(
     password: String,
     profileImage: String,
     bio: String,
+    followers: Array,
+    following: Array,
+    likesUser: Array,
+    savesUser: Array,
   },
   {
     timestamps: true,
